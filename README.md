@@ -19,7 +19,7 @@ A Flarum extension that displays dates using the Solar Hijri (Jalali) calendar a
 Once the package is available on Packagist, install it from your Flarum installation directory:
 
 ```bash
-composer require persian-tools/jalali-calendar
+composer require mabioca/jalali-calendar
 ```
 
 Enable the extension from the Flarum administration panel, or run:
