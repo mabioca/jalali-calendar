@@ -1,0 +1,15 @@
+{
+    "name": "persian-tools/jalali-calendar",
+    "description": "Jalali calendar and Persian numeral support for Flarum.",
+    "type": "flarum-extension",
+    "license": "MIT",
+    "require": {
+        "flarum/core": "^2.0"
+    },
+    "extra": {
+        "flarum-extension": {
+            "title": "Jalali Calendar",
+            "category": "feature"
+        }
+    }
+}
