@@ -27,14 +27,90 @@ const humanTimeLongFormatter = new Intl.DateTimeFormat(jalaliLocale, {
   day: 'numeric',
 });
 
-const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
 const fromNowPatchMarker = '__behradJalaliCalendarFromNowPatched';
 
 function toPersianDigits(value: string): string {
+  const persianDigits = [
+    '\u06F0',
+    '\u06F1',
+    '\u06F2',
+    '\u06F3',
+    '\u06F4',
+    '\u06F5',
+    '\u06F6',
+    '\u06F7',
+    '\u06F8',
+    '\u06F9',
+  ];
+
   return value.replace(/\d/g, (digit) => persianDigits[Number(digit)]);
 }
 
+function localizeButtonBadges(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('.Button-badge').forEach((badge) => {
+    const currentText = badge.textContent ?? '';
+    const localizedText = toPersianDigits(currentText);
+
+    if (currentText !== localizedText) {
+      badge.textContent = localizedText;
+    }
+  });
+}
+
 app.initializers.add('behrad-jalali-calendar', () => {
+  // Localize existing badges.
+  localizeButtonBadges();
+
+  // Observe newly added elements and changes to badge text.
+  const badgeObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'characterData') {
+        const parent = mutation.target.parentElement;
+
+        if (parent?.closest('.Button-badge')) {
+          localizeButtonBadges(parent.closest('.Button-badge')!.parentElement ?? document);
+        }
+
+        continue;
+      }
+
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+          return;
+        }
+
+        const element = node as HTMLElement;
+
+        if (element.matches('.Button-badge')) {
+          const currentText = element.textContent ?? '';
+          const localizedText = toPersianDigits(currentText);
+
+          if (currentText !== localizedText) {
+            element.textContent = localizedText;
+          }
+        }
+
+        localizeButtonBadges(element);
+      });
+
+      if (
+        mutation.target instanceof Element &&
+        mutation.target.closest('.Button-badge')
+      ) {
+        localizeButtonBadges(
+          mutation.target.closest('.Button-badge')!.parentElement ?? document
+        );
+      }
+    }
+  });
+
+  badgeObserver.observe(document.body, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+
+  // Format Flarum dates using the Jalali calendar.
   override(app.translator, 'formatDateTime', function (original, time, id) {
     if (time) {
       const timestamp = time.valueOf();
@@ -57,6 +133,7 @@ app.initializers.add('behrad-jalali-calendar', () => {
     return original(time, id);
   });
 
+  // Convert relative-time digits to Persian digits.
   const globalDayjs = (window as any).dayjs;
   const prototype = globalDayjs?.prototype;
 
@@ -72,4 +149,3 @@ app.initializers.add('behrad-jalali-calendar', () => {
 
   prototype[fromNowPatchMarker] = true;
 });
-

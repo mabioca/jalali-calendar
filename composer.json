@@ -6,10 +6,20 @@
     "require": {
         "flarum/core": "^2.0"
     },
+    "support": {
+        "forum": "https://discuss.flarum.org/d/40057-jalali-calendar-and-persian-numerals-for-flarum-2",
+        "issues": "https://github.com/mabioca/jalali-calendar/issues",
+        "source": "https://github.com/mabioca/jalali-calendar"
+    },
     "extra": {
         "flarum-extension": {
             "title": "Jalali Calendar",
-            "category": "feature"
+            "category": "feature",
+            "icon": {
+                "name": "fas fa-sun",
+                "backgroundColor": "#DA0000",
+                "color": "#fff"
+            }
         }
     }
 }
