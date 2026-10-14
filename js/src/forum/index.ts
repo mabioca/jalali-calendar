@@ -1,3 +1,4 @@
+
 import app from 'flarum/forum/app';
 import { override } from 'flarum/common/extend';
 
@@ -29,6 +30,15 @@ const humanTimeLongFormatter = new Intl.DateTimeFormat(jalaliLocale, {
 
 const fromNowPatchMarker = '__behradJalaliCalendarFromNowPatched';
 
+const numeralSelectors = [
+  '.Button-badge',
+  '.DiscussionListItem-stats-item-label',
+  '.HeaderDropdownBubble',
+  '.item-discussion-count .userStat',
+  '.item-comment-count .userStat',
+  '.FollowUsers--count',
+].join(',');
+
 function toPersianDigits(value: string): string {
   const persianDigits = [
     '\u06F0',
@@ -46,71 +56,82 @@ function toPersianDigits(value: string): string {
   return value.replace(/\d/g, (digit) => persianDigits[Number(digit)]);
 }
 
-function localizeButtonBadges(root: ParentNode = document): void {
-  root.querySelectorAll<HTMLElement>('.Button-badge').forEach((badge) => {
-    const currentText = badge.textContent ?? '';
-    const localizedText = toPersianDigits(currentText);
+function localizeTextNode(node: Text): void {
+  const parent = node.parentElement;
 
-    if (currentText !== localizedText) {
-      badge.textContent = localizedText;
-    }
+  if (!parent || !parent.closest(numeralSelectors)) {
+    return;
+  }
+
+  const currentText = node.nodeValue ?? '';
+  const localizedText = toPersianDigits(currentText);
+
+  if (currentText !== localizedText) {
+    node.nodeValue = localizedText;
+  }
+}
+
+function localizeNumerals(root: ParentNode = document): void {
+  if (root instanceof Element && root.matches(numeralSelectors)) {
+    localizeElementText(root);
+  }
+
+  root.querySelectorAll(numeralSelectors).forEach((element) => {
+    localizeElementText(element);
   });
 }
 
-app.initializers.add('behrad-jalali-calendar', () => {
-  // Localize existing badges.
-  localizeButtonBadges();
+function localizeElementText(element: Element): void {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let currentNode: Node | null;
 
-  // Observe newly added elements and changes to badge text.
-  const badgeObserver = new MutationObserver((mutations) => {
+  while ((currentNode = walker.nextNode())) {
+    if (currentNode instanceof Text) {
+      textNodes.push(currentNode);
+    }
+  }
+
+  textNodes.forEach(localizeTextNode);
+}
+
+app.initializers.add('behrad-jalali-calendar', () => {
+  localizeNumerals();
+
+  const numeralObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === 'characterData') {
-        const parent = mutation.target.parentElement;
-
-        if (parent?.closest('.Button-badge')) {
-          localizeButtonBadges(parent.closest('.Button-badge')!.parentElement ?? document);
+        if (mutation.target instanceof Text) {
+          localizeTextNode(mutation.target);
         }
 
         continue;
       }
 
       mutation.addedNodes.forEach((node) => {
-        if (node.nodeType !== Node.ELEMENT_NODE) {
-          return;
+        if (node.nodeType === Node.TEXT_NODE) {
+          localizeTextNode(node as Text);
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          localizeNumerals(node as Element);
         }
-
-        const element = node as HTMLElement;
-
-        if (element.matches('.Button-badge')) {
-          const currentText = element.textContent ?? '';
-          const localizedText = toPersianDigits(currentText);
-
-          if (currentText !== localizedText) {
-            element.textContent = localizedText;
-          }
-        }
-
-        localizeButtonBadges(element);
       });
 
-      if (
-        mutation.target instanceof Element &&
-        mutation.target.closest('.Button-badge')
-      ) {
-        localizeButtonBadges(
-          mutation.target.closest('.Button-badge')!.parentElement ?? document
-        );
+      if (mutation.target instanceof Element) {
+        const target = mutation.target;
+
+        if (target.matches(numeralSelectors) || target.closest(numeralSelectors)) {
+          localizeNumerals(target.closest(numeralSelectors) ?? target);
+        }
       }
     }
   });
 
-  badgeObserver.observe(document.body, {
+  numeralObserver.observe(document.body, {
     childList: true,
     characterData: true,
     subtree: true,
   });
 
-  // Format Flarum dates using the Jalali calendar.
   override(app.translator, 'formatDateTime', function (original, time, id) {
     if (time) {
       const timestamp = time.valueOf();
@@ -133,7 +154,6 @@ app.initializers.add('behrad-jalali-calendar', () => {
     return original(time, id);
   });
 
-  // Convert relative-time digits to Persian digits.
   const globalDayjs = (window as any).dayjs;
   const prototype = globalDayjs?.prototype;
 
