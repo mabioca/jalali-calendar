@@ -37,6 +37,10 @@ const numeralSelectors = [
   '.item-discussion-count .userStat',
   '.item-comment-count .userStat',
   '.FollowUsers--count',
+  '.UserCard-bestAnswerCount',
+  '.RecipientLabel-text',
+  '.DialogListItem-avatar .Bubble',
+  '.PostMeta-number',
 ].join(',');
 
 function toPersianDigits(value: string): string {
@@ -59,8 +63,10 @@ function toPersianDigits(value: string): string {
 function localizeTextNode(node: Text): void {
   const parent = node.parentElement;
 
-  if (!parent || !parent.closest(numeralSelectors)) {
-    return;
+  if (!parent ||
+  !parent.closest(numeralSelectors) ||
+  parent.closest('.sr-only, .visually-hidden')) {
+  return;
   }
 
   const currentText = node.nodeValue ?? '';
